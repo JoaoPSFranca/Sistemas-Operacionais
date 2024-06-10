@@ -50,7 +50,7 @@ void gotoxy(int x, int y) {
 }
 
 void imprimirnave(void) {
-  printf("%c",195);
+  printf("%c", 195);
 }
 
 void apagarnave(void) {
