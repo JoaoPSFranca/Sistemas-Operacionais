@@ -21,8 +21,8 @@ int fantasma[2][2] = {
 };
 
 int 
-    velo = 50, 
-    veloFant = 150,
+    velo = 150, 
+    veloFant = 175,
     gameover = 0;
 
 int mapa[MAXLIN][MAXCOL] = {
@@ -137,8 +137,8 @@ void andarFantasma(int direcao, int i){
     }
 
     desenharFantasma(fantasma[i]);
-    Sleep(veloFant);
     ReleaseMutex(mutex);
+    Sleep(veloFant);
 }
 
 void configurartela(void) {
@@ -270,27 +270,44 @@ int verificarPosicaoFantasma(int x, int y, int i){
 }
 
 DWORD WINAPI moverFantasma(LPVOID lpParam) {
+    WaitForSingleObject(mutex,INFINITE);
+    srand(time(NULL));
+    Sleep(200);
+    ReleaseMutex(mutex);
+    
     int i = *((int*)lpParam);
 
-    while(gameover==0){
-        int numero = rand() % 4;
+    int numero = rand() % 4;
 
+    while(gameover==0){
         switch (numero) {
             case 0: // pra cima
                 if(verificarPosicaoFantasma(fantasma[i][0] - 1, fantasma[i][1], i))
                     andarFantasma(0, i);
+                else
+                    while (numero == 1 || numero == 0)
+                        numero = rand() % 4;
                 break;
             case 1: // pra baixo
                 if(verificarPosicaoFantasma(fantasma[i][0] + 1, fantasma[i][1], i))
                     andarFantasma(1, i);
+                else
+                    while (numero == 1 || numero == 0)
+                        numero = rand() % 4;
                 break;
             case 2: // pra esquerda
                 if(verificarPosicaoFantasma(fantasma[i][0], fantasma[i][1] - 1, i))
                     andarFantasma(2, i);
+                else
+                    while (numero == 2 || numero == 3)
+                        numero = rand() % 4;
                 break;
             case 3: // pra direita
                 if(verificarPosicaoFantasma(fantasma[i][0], fantasma[i][1] + 1, i))
                     andarFantasma(3, i);
+                else
+                    while (numero == 2 || numero == 3)
+                        numero = rand() % 4;
                 break;
         }
     }
@@ -306,8 +323,6 @@ int main() {
         printf("Erro ao criar o mutex!!");
         return 1;
     }
-    
-    srand(time(NULL));
 
     configurartela();
 
