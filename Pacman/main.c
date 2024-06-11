@@ -11,7 +11,9 @@ HANDLE hThread1, hThread2, hThread3;
 HANDLE mutex;
 DWORD ThreadID1;
 
-int  pontos = 0;
+int  
+    pontos = 0,
+    pontosTotais = 244;
 
 int pacman[2] = {24, 15};
 
@@ -23,7 +25,10 @@ int fantasma[2][2] = {
 int 
     velo = 150, 
     veloFant = 175,
-    gameover = 0;
+    gameover = 0,
+    gameWin = 0;
+
+int fruta = 0;
 
 int mapa[MAXLIN][MAXCOL] = {
     {9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
@@ -87,11 +92,21 @@ void gotoxy(int x, int y){
 
 void desenharPacman(){
     gotoxy(pacman[1] * 3, pacman[0]);
-    printf(" %c ", 64);
+    printf(" %c ", 232);
 }
 
 void apagaPacman(){
     gotoxy(pacman[1] * 3, pacman[0]);
+    printf("   ");
+}
+
+void desenharFruta(){
+    gotoxy(14*3, 24);
+    printf(" %c ", 234);
+}
+
+void apagaFruta(){
+    gotoxy(24, 14);
     printf("   ");
 }
 
@@ -142,28 +157,19 @@ void andarFantasma(int direcao, int i){
 }
 
 void configurartela(void) {
-    //Define um estrutura que representa o cursor da tela
     CONSOLE_CURSOR_INFO info;
+    HANDLE wHnd = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    //Define uma variavel para representar o console
-    HANDLE wHnd;
-    wHnd = GetStdHandle(STD_OUTPUT_HANDLE);
-
-    //Define a cor do fundo e da fonte
     system("color 07");
 
-    //Muda o titulo da janela
     SetConsoleTitle("Pacman em C");
 
-    //Define o tamanho da janela
-    SMALL_RECT windowSize = {0, 0, (MAXCOL*3)+1, MAXLIN+5};
+    SMALL_RECT windowSize = {0, 0, (MAXCOL*3) + 1, MAXLIN + 1};
     SetConsoleWindowInfo(wHnd, TRUE, &windowSize);
 
-    //Define o tamanho do buffer:
-    COORD bufferSize = {(MAXCOL*3)+1, MAXLIN+5};
+    COORD bufferSize = {(MAXCOL*3) + 1, MAXLIN + 1};
     SetConsoleScreenBufferSize(wHnd, bufferSize);
 
-    //Apaga o cursor da tela
     info.dwSize = 100;
     info.bVisible = FALSE;
     SetConsoleCursorInfo(wHnd, &info);
@@ -174,12 +180,46 @@ void configurartela(void) {
     desenharPacman();
 }
 
+int verificarPonto(){
+    int i, j, temPonto = 0;
+
+    for(i = 0; i < MAXLIN; i++) {
+        for(j = 0; j < MAXCOL; j++) {
+            if(mapa[i][j] == 0){
+                temPonto = 1;
+                break;
+            }
+        }
+    }
+    
+    return temPonto;
+}
+
 int verificarPosicao(int x, int y){
     WaitForSingleObject(mutex,INFINITE);
     int verify = 0;
 
+    if(x == 24 && y == 14 && fruta){
+        pontos += 30;
+        fruta = 0;
+        apagaFruta();
+        if(!pontosTotais)
+            gameWin = 1;
+    }
+
     switch (mapa[x][y]) {
-        case 0: pontos++; mapa[x][y] = 9; verify = 1; break;
+        case 0: 
+            pontos++; 
+            pontosTotais--;
+            mapa[x][y] = 9; 
+            if((pontos % 80) == 0){
+                desenharFruta();
+                fruta = 1;
+            }
+            if(!pontosTotais && !fruta)
+                gameWin = 1;
+            verify = 1; 
+            break;
         case 9: verify = 1; break;
         default: verify = 0; break;
     }
@@ -197,7 +237,7 @@ int verificarPosicao(int x, int y){
 DWORD WINAPI moverPacman(LPVOID lpParam) {
     int tecla = 0;
 
-    while(gameover==0){
+    while(gameover == 0 && gameWin == 0){
         WaitForSingleObject(mutex,INFINITE);
         gotoxy(0, MAXLIN+1);
         printf("Pontos: %d\t",pontos);
@@ -279,7 +319,7 @@ DWORD WINAPI moverFantasma(LPVOID lpParam) {
 
     int numero = rand() % 4;
 
-    while(gameover==0){
+    while(gameover == 0 && gameWin == 0){
         switch (numero) {
             case 0: // pra cima
                 if(verificarPosicaoFantasma(fantasma[i][0] - 1, fantasma[i][1], i))
@@ -315,6 +355,55 @@ DWORD WINAPI moverFantasma(LPVOID lpParam) {
     return 0;
 }
 
+void telaBranca() {
+    for (int y = 0; y < MAXLIN; y++) {
+        for (int x = 0; x < (MAXCOL * 3); x++) {
+            gotoxy(x, y);
+            printf("%c", 219);
+        }
+    }
+}
+
+void telaGameOver(){
+    system("cls");
+    telaBranca();
+    Sleep(10);
+    system("cls");
+    telaBranca();
+    Sleep(10);
+    system("cls");
+    telaBranca();
+    
+    Sleep(3000);
+    system("cls");
+
+    gotoxy((MAXCOL * 3) / 2 - 5, MAXLIN / 2);
+    printf("GAME OVER");
+
+    Sleep(5000);
+}
+
+void telaGameWin(){
+    system("cls");
+    telaBranca();
+    Sleep(10);
+    system("cls");
+    telaBranca();
+    Sleep(10);
+    system("cls");
+    telaBranca();
+    
+    Sleep(3000);
+    system("cls");
+
+    gotoxy((MAXCOL * 3) / 2 - 5, MAXLIN / 2 - 1);
+    printf("GAME WIN");
+    gotoxy((MAXCOL * 3) / 2 - 5, MAXLIN / 2);
+    printf("PONTOS: %d", pontos);
+
+    Sleep(5000);
+}
+
 
 int main() {
     mutex = CreateMutex(NULL, FALSE, NULL);
@@ -345,8 +434,10 @@ int main() {
     CloseHandle(hThread2);
     CloseHandle(hThread3);
 
-    system("cls");
-    printf("Voce perdeu! Fez %d pontos.\n",pontos);
-    system("pause");
+    if (gameover)
+        telaGameOver();
+    else if (gameWin)
+        telaGameWin();
+    
     return 0;
 }
