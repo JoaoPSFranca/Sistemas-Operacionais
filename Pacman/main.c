@@ -309,13 +309,71 @@ int verificarPosicaoFantasma(int x, int y, int i){
     return verify;
 }
 
-DWORD WINAPI moverFantasma(LPVOID lpParam) {
-    WaitForSingleObject(mutex,INFINITE);
+DWORD WINAPI cacarPacman(LPVOID lpParam) {
     srand(time(NULL));
-    Sleep(200);
-    ReleaseMutex(mutex);
+    int i = (int)lpParam;  // Identify which ghost is being moved
+
+    while(gameover == 0 && gameWin == 0) {
+        WaitForSingleObject(mutex, INFINITE);
+        int distanciaX = pacman[1] - fantasma[i][1];
+        int distanciaY = pacman[0] - fantasma[i][0];
+        ReleaseMutex(mutex);
+
+        int moveX = 0;
+        int moveY = 0;
+
+        if (abs(distanciaX) > abs(distanciaY)) {
+            moveX = (distanciaX > 0) ? 1 : -1;
+        } else {
+            moveY = (distanciaY > 0) ? 1 : -1;
+        }
+
+        // Primeiro tenta mover na direção principal
+        if (moveX != 0 && verificarPosicaoFantasma(fantasma[i][0], fantasma[i][1] + moveX, i)) {
+            andarFantasma(moveX > 0 ? 3 : 2, i);
+        } else if (moveY != 0 && verificarPosicaoFantasma(fantasma[i][0] + moveY, fantasma[i][1], i)) {
+            andarFantasma(moveY > 0 ? 1 : 0, i);
+        } 
+        // Se a direção principal estiver bloqueada, tenta mover na direção alternativa
+        else if (moveY != 0 && verificarPosicaoFantasma(fantasma[i][0] + moveY, fantasma[i][1], i)) {
+            andarFantasma(moveY > 0 ? 1 : 0, i);
+        } else if (moveX != 0 && verificarPosicaoFantasma(fantasma[i][0], fantasma[i][1] + moveX, i)) {
+            andarFantasma(moveX > 0 ? 3 : 2, i);
+        }
+        
+        // Se nenhuma direção principal ou alternativa estiver disponível, escolha uma direção válida aleatória
+        else {
+            int direction = rand() % 4;
+            switch(direction) {
+                case 0:
+                    if (verificarPosicaoFantasma(fantasma[i][0] - 1, fantasma[i][1], i))
+                        andarFantasma(0, i);
+                    break;
+                case 1:
+                    if (verificarPosicaoFantasma(fantasma[i][0] + 1, fantasma[i][1], i))
+                        andarFantasma(1, i);
+                    break;
+                case 2:
+                    if (verificarPosicaoFantasma(fantasma[i][0], fantasma[i][1] - 1, i))
+                        andarFantasma(2, i);
+                    break;
+                case 3:
+                    if (verificarPosicaoFantasma(fantasma[i][0], fantasma[i][1] + 1, i))
+                        andarFantasma(3, i);
+                    break;
+            }
+        }
+
+        Sleep(veloFant);
+    }
     
-    int i = *((int*)lpParam);
+    return 0;
+}
+
+DWORD WINAPI moverFantasma(LPVOID lpParam) {
+    srand(time(NULL));
+    
+    int i = 1;
 
     int numero = rand() % 4;
 
@@ -404,27 +462,14 @@ void telaGameWin(){
     Sleep(5000);
 }
 
-
-int main() {
-    mutex = CreateMutex(NULL, FALSE, NULL);
-    
-    if (mutex == NULL) {
-        printf("Erro ao criar o mutex!!");
-        return 1;
-    }
-
+void iniciarJogo(){
     configurartela();
 
-    // pacman
+    mutex = CreateMutex(NULL, FALSE, NULL);
+
     hThread1 = CreateThread(NULL, 0, moverPacman, NULL, 0, &ThreadID1);
-
-    int a = 0;
-    // fantasma 1
-    hThread2 = CreateThread(NULL, 0, moverFantasma, &a, 0, NULL);
-
-    int b = 1;
-    // fantasma 2
-    hThread3 = CreateThread(NULL, 0, moverFantasma, &b, 0, NULL);
+    hThread2 = CreateThread(NULL, 0, cacarPacman, (LPVOID)0, 0, NULL);
+    hThread3 = CreateThread(NULL, 0, moverFantasma, (LPVOID)1, 0, NULL);
 
     WaitForSingleObject(hThread1, INFINITE);
     WaitForSingleObject(hThread2, INFINITE);
@@ -433,11 +478,21 @@ int main() {
     CloseHandle(hThread1);
     CloseHandle(hThread2);
     CloseHandle(hThread3);
+    CloseHandle(mutex);
+}
+
+void finalizarJogo(){
+    system("cls");
 
     if (gameover)
         telaGameOver();
     else if (gameWin)
         telaGameWin();
-    
+}
+
+int main() {
+    iniciarJogo();
+    finalizarJogo();
+
     return 0;
 }
